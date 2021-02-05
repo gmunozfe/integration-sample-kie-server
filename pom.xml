@@ -11,6 +11,8 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <kie.version>7.48.0.Final</kie.version>
+        <springboot.version>2.2.6.RELEASE</springboot.version>
         
         <!-- maven plugin versions -->
         <maven-compiler-plugin.version>3.6.0</maven-compiler-plugin.version>
@@ -25,12 +27,13 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter</artifactId>
+            <version>${springboot.version}</version>
         </dependency>
         
         <dependency>
             <groupId>org.kie.server</groupId>
             <artifactId>kie-server-client</artifactId>
-            <version>${drools.version}</version>
+            <version>${kie.version}</version>
         </dependency>
 
         
@@ -44,6 +47,7 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-configuration-processor</artifactId>
+            <version>${springboot.version}</version>
             <optional>true</optional>
         </dependency>
 
@@ -59,6 +63,7 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
+            <version>${springboot.version}</version>
             <scope>test</scope>
         </dependency>
         
@@ -76,6 +81,12 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+    <groupId>org.testcontainers</groupId>
+    <artifactId>junit-jupiter</artifactId>
+    <version>${testcontainers.version}</version>
+    <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>postgresql</artifactId>
             <version>${testcontainers.version}</version>
@@ -85,9 +96,9 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-hateoas</artifactId>
             <scope>test</scope>
-            <version>2.1.8.RELEASE</version>
+            <version>${springboot.version}</version>
         </dependency>
-
+               
     </dependencies>
 
 
