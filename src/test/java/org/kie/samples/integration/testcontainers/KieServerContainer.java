@@ -1,12 +1,16 @@
 package org.kie.samples.integration.testcontainers;
 
+import java.time.Duration;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testcontainers.containers.BindMode;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.images.builder.ImageFromDockerfile;
+import org.testcontainers.utility.MountableFile;
 
 public class KieServerContainer extends GenericContainer<KieServerContainer>{
 
@@ -21,13 +25,14 @@ public class KieServerContainer extends GenericContainer<KieServerContainer>{
            .withFileFromClasspath("etc/kie-server-users.properties", "etc/kie-server-users.properties")
            .withFileFromClasspath("etc/jbpm.user.info.properties", "etc/jbpm.user.info.properties")
            .withFileFromClasspath("etc/jbpm.usergroup.callback.properties", "etc/jbpm.usergroup.callback.properties")
+           .withFileFromClasspath("etc/kjars", "etc/kjars")
            .withFileFromClasspath("Dockerfile", "Dockerfile"));
 	
 	  withNetwork(network);
-      withNetworkAliases("kie-server");
+	  withNetworkAliases("kie-server");
       withExposedPorts(KIE_PORT);
       withLogConsumer(new Slf4jLogConsumer(logger).withPrefix("KIE-LOG"));
-      waitingFor(Wait.forLogMessage(".*WildFly.*started in.*", 1));
+      waitingFor(Wait.forLogMessage(".*WildFly.*started in.*", 1).withStartupTimeout(Duration.ofMinutes(2L)));
 	}
 	
 	public Integer getKiePort() {

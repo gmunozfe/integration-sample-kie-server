@@ -68,6 +68,18 @@ displayName: Administrator of jBPM
 mail: admin@jbpm.org
 userPassword: admin
 
+dn: cn=rest-all,ou=Roles,dc=jbpm,dc=org
+objectClass: groupOfNames
+objectClass: top
+cn: rest-all
+description: rest-all group
+ou: rest-all@jbpm.org
+member: uid=kieserver,ou=People,dc=jbpm,dc=org
+member: uid=krisv,ou=People,dc=jbpm,dc=org
+member: uid=john,ou=People,dc=jbpm,dc=org
+member: uid=mary,ou=People,dc=jbpm,dc=org
+member: uid=admin,ou=People,dc=jbpm,dc=org
+
 dn: cn=admin,ou=Roles,dc=jbpm,dc=org
 objectClass: groupOfNames
 objectClass: top

@@ -98,6 +98,13 @@
             <scope>test</scope>
             <version>${springboot.version}</version>
         </dependency>
+        
+        <dependency>
+            <groupId>org.kie</groupId>
+            <artifactId>kie-ci</artifactId>
+            <version>${kie.version}</version>
+            <scope>test</scope>
+        </dependency>
                
     </dependencies>
 
