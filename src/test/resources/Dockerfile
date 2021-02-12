@@ -12,6 +12,7 @@ RUN mvn --file /etc/kjars/ldap-sample/pom.xml --batch-mode install -DskipTests
 
 FROM jboss/jbpm-server-full:latest
 #FROM jboss/kie-server:latest
+#FROM jboss/kie-server-showcase:latest
 
 COPY --from=builder /root/.m2 /opt/jboss/.m2
 
@@ -20,10 +21,14 @@ ENV KIE_SERVER_PROFILE standalone
 ENV JAVA_OPTS -Xms256m -Xmx2048m -XX:MetaspaceSize=96M -XX:MaxMetaspaceSize=512m -Djava.net.preferIPv4Stack=true -Dfile.encoding=UTF-8 \
  -Dorg.uberfire.domain=ldap -Dorg.jbpm.ht.callback=ldap -Dorg.jbpm.ht.userinfo=ldap \
  -Djbpm.user.info=file:///$JBOSS_HOME/standalone/configuration/jbpm.user.info.properties \
- -Djbpm.usergroup.callback=file:///$JBOSS_HOME/standalone/configuration/jbpm.usergroup.callback.properties 
+ -Djbpm.usergroup.callback=file:///$JBOSS_HOME/standalone/configuration/jbpm.usergroup.callback.properties \
+ -Dorg.kie.controller.ping.alive.timeout=5000000
+ ##-Dorg.kie.controller.ping.alive.disable=true
+## -Dorg.jbpm.ht.admin.user=administrator \
+## -Dorg.jbpm.ht.admin.group=admin
 
-ADD etc/kie-server-users.properties $JBOSS_HOME/standalone/configuration/application-users.properties
-ADD etc/kie-server-roles.properties $JBOSS_HOME/standalone/configuration/application-roles.properties
+## ADD etc/kie-server-users.properties $JBOSS_HOME/standalone/configuration/application-users.properties
+## ADD etc/kie-server-roles.properties $JBOSS_HOME/standalone/configuration/application-roles.properties
 
 ADD etc/jbpm.user.info.properties $JBOSS_HOME/standalone/configuration/jbpm.user.info.properties
 ADD etc/jbpm.usergroup.callback.properties $JBOSS_HOME/standalone/configuration/jbpm.usergroup.callback.properties
@@ -45,3 +50,4 @@ WORKDIR $JBOSS_HOME/bin/
 CMD ["./start_jbpm-wb.sh"]
 #CMD ["./start_kie-wb.sh"]
 
+#CMD ["./start_kie-server.sh"]

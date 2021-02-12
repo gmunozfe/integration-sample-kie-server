@@ -54,13 +54,11 @@ public class KieIntegrationTest {
 
     @Test
     public void firstTest() throws Exception {
-        logger.info("Sleeping..."+kieServer.getKiePort());
-    	logger.info("LDAP..."+ldap.getLdapPort());
+        logger.info("KIE SERVER started at port "+kieServer.getKiePort());
+        logger.info("LDAP started at port "+ldap.getLdapPort());
         
-
-        setupClient("krisv", "krisv");
-        
-        Thread.sleep(10000000);
+    	setupClient("krisv", "krisv3");
+       
     }
 
     private void setupClient(String user, String password) {

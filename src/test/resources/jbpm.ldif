@@ -30,7 +30,7 @@ cn: krisv
 sn: KrisV
 displayName: Kris Verlaenen
 mail: krisv@jbpm.org
-userPassword: krisv
+userPassword: krisv3
 
 dn: uid=john,ou=People,dc=jbpm,dc=org
 objectclass: top
@@ -56,14 +56,14 @@ displayName: Mary Bloody
 mail: mary@jbpm.org
 userPassword: mary
 
-dn: uid=admin,ou=People,dc=jbpm,dc=org
+dn: uid=Administrator,ou=People,dc=jbpm,dc=org
 objectclass: top
 objectclass: uidObject
 objectclass: person
 objectClass: inetOrgPerson
-uid: admin
-cn: admin
-sn: Admin
+uid: Administrator
+cn: Administrator
+sn: Administrator
 displayName: Administrator of jBPM
 mail: admin@jbpm.org
 userPassword: admin
@@ -78,19 +78,29 @@ member: uid=kieserver,ou=People,dc=jbpm,dc=org
 member: uid=krisv,ou=People,dc=jbpm,dc=org
 member: uid=john,ou=People,dc=jbpm,dc=org
 member: uid=mary,ou=People,dc=jbpm,dc=org
-member: uid=admin,ou=People,dc=jbpm,dc=org
+member: uid=Administrator,ou=People,dc=jbpm,dc=org
+
+dn: cn=process-admin,ou=Roles,dc=jbpm,dc=org
+objectClass: groupOfNames
+objectClass: top
+cn: process-admin
+description: Process-Admin group
+ou: processadmin@jbpm.org
+member: uid=kieserver,ou=People,dc=jbpm,dc=org
+member: uid=krisv,ou=People,dc=jbpm,dc=org
+member: uid=john,ou=People,dc=jbpm,dc=org
+member: uid=Administrator,ou=People,dc=jbpm,dc=org
 
 dn: cn=admin,ou=Roles,dc=jbpm,dc=org
 objectClass: groupOfNames
 objectClass: top
 cn: admin
 description: Admin group
-ou: admins@jbpm.org
+ou: admin@jbpm.org
 member: uid=kieserver,ou=People,dc=jbpm,dc=org
 member: uid=krisv,ou=People,dc=jbpm,dc=org
 member: uid=john,ou=People,dc=jbpm,dc=org
-member: uid=mary,ou=People,dc=jbpm,dc=org
-member: uid=admin,ou=People,dc=jbpm,dc=org
+member: uid=Administrator,ou=People,dc=jbpm,dc=org
 
 dn: cn=manager,ou=Roles,dc=jbpm,dc=org
 objectClass: groupOfNames
@@ -101,7 +111,7 @@ ou: managers@jbpm.org
 member: uid=krisv,ou=People,dc=jbpm,dc=org
 member: uid=john,ou=People,dc=jbpm,dc=org
 member: uid=mary,ou=People,dc=jbpm,dc=org
-member: uid=admin,ou=People,dc=jbpm,dc=org
+member: uid=Administrator,ou=People,dc=jbpm,dc=org
 
 dn: cn=user,ou=Roles,dc=jbpm,dc=org
 objectClass: groupOfNames
@@ -112,4 +122,16 @@ ou: users@jbpm.org
 member: uid=krisv,ou=People,dc=jbpm,dc=org
 member: uid=john,ou=People,dc=jbpm,dc=org
 member: uid=mary,ou=People,dc=jbpm,dc=org
-member: uid=admin,ou=People,dc=jbpm,dc=org
+member: uid=Administrator,ou=People,dc=jbpm,dc=org
+
+dn: cn=kie-server,ou=Roles,dc=jbpm,dc=org
+objectClass: groupOfNames
+objectClass: top
+cn: kie-server
+description: kie-server group
+ou: kie-servers@jbpm.org
+member: uid=krisv,ou=People,dc=jbpm,dc=org
+member: uid=john,ou=People,dc=jbpm,dc=org
+member: uid=mary,ou=People,dc=jbpm,dc=org
+member: uid=Administrator,ou=People,dc=jbpm,dc=org
+member: uid=kieserver,ou=People,dc=jbpm,dc=org

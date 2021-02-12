@@ -21,8 +21,8 @@ public class KieServerContainer extends GenericContainer<KieServerContainer>{
 	public KieServerContainer(Network network) {
 	  super( new ImageFromDockerfile()
            .withFileFromClasspath("etc/jbpm-custom.cli", "etc/jbpm-custom.cli")
-           .withFileFromClasspath("etc/kie-server-roles.properties", "etc/kie-server-roles.properties")
-           .withFileFromClasspath("etc/kie-server-users.properties", "etc/kie-server-users.properties")
+           //.withFileFromClasspath("etc/kie-server-roles.properties", "etc/kie-server-roles.properties")
+           //.withFileFromClasspath("etc/kie-server-users.properties", "etc/kie-server-users.properties")
            .withFileFromClasspath("etc/jbpm.user.info.properties", "etc/jbpm.user.info.properties")
            .withFileFromClasspath("etc/jbpm.usergroup.callback.properties", "etc/jbpm.usergroup.callback.properties")
            .withFileFromClasspath("etc/kjars", "etc/kjars")
@@ -32,7 +32,7 @@ public class KieServerContainer extends GenericContainer<KieServerContainer>{
 	  withNetworkAliases("kie-server");
       withExposedPorts(KIE_PORT);
       withLogConsumer(new Slf4jLogConsumer(logger).withPrefix("KIE-LOG"));
-      waitingFor(Wait.forLogMessage(".*WildFly.*started in.*", 1).withStartupTimeout(Duration.ofMinutes(2L)));
+      waitingFor(Wait.forLogMessage(".*WildFly.*started in.*", 1).withStartupTimeout(Duration.ofMinutes(10L)));
 	}
 	
 	public Integer getKiePort() {

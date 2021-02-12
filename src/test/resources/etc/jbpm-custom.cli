@@ -1,37 +1,58 @@
 embed-server --server-config=standalone.xml
 
+## Activate trace, if needed
+##---------------------------
+##/subsystem=logging/logger=org.jboss.security/:add(level=TRACE,use-parent-handlers=true)
+##/subsystem=logging/logger=org.jbpm/:add(level=TRACE,use-parent-handlers=true)
+##/subsystem=logging/logger=org.kie/:add(level=TRACE,use-parent-handlers=true)
+##/subsystem=logging/logger=org.wildfly.security/:add(level=TRACE,use-parent-handlers=true)
+##/subsystem=logging/logger=org.wildfly.elytron/:add(level=TRACE,use-parent-handlers=true)
+##/subsystem=logging/logger=org.wildfly.extension.undertow/:add(level=TRACE,use-parent-handlers=true)
+##/subsystem=logging/console-handler=CONSOLE:write-attribute(name=level, value=TRACE)
+##
 
- /subsystem=logging/logger=org.jboss.security/:add(category=org.jboss.security,level=DEBUG,use-parent-handlers=true)
-### /subsystem=logging/logger=org.jbpm/:add(category=org.jbpm,level=DEBUG,use-parent-handlers=true)
-### /subsystem=logging/logger=org.kie/:add(category=org.jbpm,level=DEBUG,use-parent-handlers=true)
- /subsystem=logging/console-handler=CONSOLE:change-log-level(level=DEBUG)
- 
+## Dump http requests
+##-------------------
+## Simple:
+## /subsystem=undertow/server=default-server/host=default-host/setting=access-log:\
+##  add(pattern="%h %t \"%r\" %s ", use-server-log=true)
+##
+## Verbose:
+## batch
+## /subsystem=undertow/configuration=filter/custom-filter=request-logging-filter:add(class-name=io.undertow.server.handlers.RequestDumpingHandler, module=io.undertow.core)
+## /subsystem=undertow/server=default-server/host=default-host/filter-ref=request-logging-filter:add
+## run-batch
 
-if (outcome != success) of /subsystem=security/security-domain=other/authentication=classic/login-module=org.jboss.security.auth.spi.LdapExtLoginModule:read-resource
-    /subsystem=security/security-domain=other/authentication=classic/login-module=LdapExtended:add(code="org.jboss.security.auth.spi.LdapExtLoginModule", flag=required, module-options=[ \
-    ("searchScope" => "SUBTREE_SCOPE"), \
-    ("java.naming.factory.initial" => "com.sun.jndi.ldap.LdapCtxFactory"), \
-    ("java.naming.provider.url" => "ldap://ldap-alias:389"), \
-    ("roleAttributeIsDN" => "true"), \
-    ("roleAttributeID" => "dn"), \
-    ("rolesCtxDN" => "ou=Roles,dc=jbpm,dc=org"), \
-    ("roleFilter" => "(member=uid={0},ou=People,dc=jbpm,dc=org)"), \
-    ("roleNameAttributeID" => "cn"), \
-    ("searchTimeLimit" => "5000"), \
-    ("java.naming.security.authentication" => "simple"), \
-    ("roleRecursion" => "0"), \
-    ("java.naming.referral" => "follow"), \
-    ("bindDN" => "cn=admin,dc=jbpm,dc=org"), \
-    ("bindCredential" => "admin"), \
-    ("baseCtxDN" => "ou=People,dc=jbpm,dc=org"), \
-    ("allowEmptyPasswords" => "false"), \
-    ("throwValidateError" => "true"), \
-    ("baseFilter" => "(uid={0})")])
-end-if
 
-##if (outcome != success) of /subsystem=security/security-domain=other/authentication=classic/login-module=org.kie.security.jaas.KieLoginModule:read-resource
-##    /subsystem=security/security-domain=other/authentication=classic/login-module=org.kie.security.jaas.KieLoginModule:add(code=org.kie.security.jaas.KieLoginModule, flag=sufficient, module=deployment.business-central.war)
-##end-if
+# Remove unused login modules
+#----------------------------
+/subsystem=security/security-domain=other/authentication=classic/login-module=Remoting:remove
+/subsystem=security/security-domain=other/authentication=classic/login-module=RealmDirect:remove
+
+## KieLoginModule is needed for kie-server-client (business-central)
+##/subsystem=security/security-domain=other/authentication=classic/login-module=org.kie.security.jaas.KieLoginModule:remove
+##/subsystem=security/security-domain=other/authentication=classic/login-module=org.kie.security.jaas.KieLoginModule:add(code="org.kie.security.jaas.KieLoginModule",flag="required",module="deployment.business-central.war")
+
+## Add a login module for ldap
+   /subsystem=security/security-domain=other/authentication=classic/login-module=LdapExtended:add(code="org.jboss.security.auth.spi.LdapExtLoginModule", flag=required, module-options=[ \
+   ("searchScope" => "SUBTREE_SCOPE"), \
+   ("java.naming.factory.initial" => "com.sun.jndi.ldap.LdapCtxFactory"), \
+   ("java.naming.provider.url" => "ldap://ldap-alias:389"), \
+   ("roleAttributeIsDN" => "true"), \
+   ("roleAttributeID" => "dn"), \
+   ("rolesCtxDN" => "ou=Roles,dc=jbpm,dc=org"), \
+   ("roleFilter" => "(member=uid={0},ou=People,dc=jbpm,dc=org)"), \
+   ("roleNameAttributeID" => "cn"), \
+   ("searchTimeLimit" => "5000"), \
+   ("java.naming.security.authentication" => "simple"), \
+   ("roleRecursion" => "0"), \
+   ("java.naming.referral" => "follow"), \
+   ("bindDN" => "cn=admin,dc=jbpm,dc=org"), \
+   ("bindCredential" => "admin"), \
+   ("baseCtxDN" => "ou=People,dc=jbpm,dc=org"), \
+   ("allowEmptyPasswords" => "false"), \
+   ("throwValidateError" => "true"), \
+   ("baseFilter" => "(uid={0})")])
 
 if (outcome != success) of /system-property=org.kie.demo:read-resource
 	/system-property=org.kie.server.id:add(value="${org.kie.demo:true}")
@@ -75,5 +96,37 @@ end-if
 # else
 #     /system-property=org.uberfire.nio.git.dir:write-attribute(name=value,value="/opt/jboss/wildfly/mygit")
 # end-if
+
+
+### ELYTRON
+
+  # Link legacy security domain (other) with a new elytron-realm
+  /subsystem=security/elytron-realm=LegacyRealm:add(legacy-jaas-config=other)
+  
+  ### If business-central didn't require the KieLoginModule, ldap-realm could be created directly at Elytron
+  ###/subsystem=elytron/dir-context=ldap-connection:add(url=ldap://ldap-alias:389, principal="cn=admin,dc=jbpm,dc=org", credential-reference={clear-text=admin})
+  ###
+  ###/subsystem=elytron/ldap-realm="KieLdap":add(dir-context=ldap-connection, \
+  ###          direct-verification=true, \
+  ###          identity-mapping={search-base-dn="ou=People,dc=jbpm,dc=org", \
+  ###          rdn-identifier="uid", \
+  ###          attribute-mapping=[{filter-base-dn="ou=Roles,dc=jbpm,dc=org",filter="(member=uid={0},ou=People,dc=jbpm,dc=org)",from="cn",to="Roles"}]})
+  
+  /subsystem=elytron/simple-role-decoder=from-roles-attribute:add(attribute=Roles) 
+  
+  /subsystem=elytron/security-domain=KIEDomain:add(realms=[{realm="LegacyRealm",role-decoder=from-roles-attribute}], default-realm="LegacyRealm", permission-mapper=default-permission-mapper)
+  
+  /subsystem=elytron/http-authentication-factory=ldap-http-auth:add(http-server-mechanism-factory=global,security-domain=KIEDomain,mechanism-configurations=[{mechanism-name=BASIC,mechanism-realm-configurations=[{realm-name="LegacyRealm"}]}, {mechanism-name=FORM}])
+  
+  /subsystem=undertow/application-security-domain=KIEDomain:add(http-authentication-factory=ldap-http-auth)
+
+  /subsystem=undertow:write-attribute(name=default-security-domain, value="KIEDomain")
+
+  ##### disable jacc from security subsystem and add enable at elytron by adding new policy 
+  
+  /subsystem=security:write-attribute(name=initialize-jacc, value=false)
+  /subsystem=elytron/policy=jacc:add(jacc-policy={})
+  /subsystem=undertow/application-security-domain=KIEDomain:write-attribute(name=enable-jacc, value=true)
+
 
 stop-embedded-server
