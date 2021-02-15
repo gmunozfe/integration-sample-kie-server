@@ -20,13 +20,11 @@ public class KieServerContainer extends GenericContainer<KieServerContainer>{
 	
 	public KieServerContainer(Network network) {
 	  super( new ImageFromDockerfile()
-           .withFileFromClasspath("etc/jbpm-custom.cli", "etc/jbpm-custom.cli")
-           //.withFileFromClasspath("etc/kie-server-roles.properties", "etc/kie-server-roles.properties")
-           //.withFileFromClasspath("etc/kie-server-users.properties", "etc/kie-server-users.properties")
+           .withFileFromClasspath("etc/jbpm-custom.cli", "etc/ldap/jbpm-custom.cli")
            .withFileFromClasspath("etc/jbpm.user.info.properties", "etc/jbpm.user.info.properties")
            .withFileFromClasspath("etc/jbpm.usergroup.callback.properties", "etc/jbpm.usergroup.callback.properties")
            .withFileFromClasspath("etc/kjars", "etc/kjars")
-           .withFileFromClasspath("Dockerfile", "Dockerfile"));
+           .withFileFromClasspath("Dockerfile", "etc/ldap/Dockerfile"));
 	
 	  withNetwork(network);
 	  withNetworkAliases("kie-server");

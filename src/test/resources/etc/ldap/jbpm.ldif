@@ -68,6 +68,18 @@ displayName: Administrator of jBPM
 mail: admin@jbpm.org
 userPassword: admin
 
+dn: uid=userWithNoRoles,ou=People,dc=jbpm,dc=org
+objectclass: top
+objectclass: uidObject
+objectclass: person
+objectClass: inetOrgPerson
+uid: userWithNoRoles
+cn: userWithNoRoles
+sn: userWithNoRoles
+displayName: userWithNoRoles of jBPM
+mail: userWithNoRoles@jbpm.org
+userPassword: pwWithNoRoles
+
 dn: cn=rest-all,ou=Roles,dc=jbpm,dc=org
 objectClass: groupOfNames
 objectClass: top
