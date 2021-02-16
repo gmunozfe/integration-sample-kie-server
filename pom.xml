@@ -12,7 +12,7 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <kie.version>7.48.0.Final</kie.version>
-        <springboot.version>2.2.6.RELEASE</springboot.version>
+        <junit.version>5.7.0</junit.version>
         
         <!-- maven plugin versions -->
         <maven-compiler-plugin.version>3.6.0</maven-compiler-plugin.version>
@@ -21,15 +21,12 @@
         <!--this is used by logback-test.xml-->
         <testLogRootLevel>info</testLogRootLevel>
         <testcontainers.version>1.15.1</testcontainers.version>
+        <hamcrest.version>2.2</hamcrest.version>
+        <slf4j.version>1.7.30</slf4j.version>
     </properties>
 
     <dependencies>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter</artifactId>
-            <version>${springboot.version}</version>
-        </dependency>
-        
+       
         <dependency>
             <groupId>org.kie.server</groupId>
             <artifactId>kie-server-client</artifactId>
@@ -42,14 +39,6 @@
             <version>2.6</version>
         </dependency>
 
-        <!-- For decision server auto-configuration -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-configuration-processor</artifactId>
-            <version>${springboot.version}</version>
-            <optional>true</optional>
-        </dependency>
-
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
@@ -58,13 +47,6 @@
         </dependency>
 
         <!-- Testing -->
-        
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <version>${springboot.version}</version>
-            <scope>test</scope>
-        </dependency>
         
         <dependency>
             <groupId>org.assertj</groupId>
@@ -81,11 +63,33 @@
         </dependency>
         
         <dependency>
-    <groupId>org.testcontainers</groupId>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>${testcontainers.version}</version>
+            <scope>test</scope>
+        </dependency>
+        
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>selenium</artifactId>
+            <version>${testcontainers.version}</version>
+            <scope>test</scope>
+        </dependency>
+        
+        <dependency>
+    <groupId>org.seleniumhq.selenium</groupId>
+    <artifactId>selenium-java</artifactId>
+    <version>3.141.59</version>
+    <scope>provided</scope>
+</dependency>
+        
+        <dependency>
+    <groupId>org.junit.jupiter</groupId>
     <artifactId>junit-jupiter</artifactId>
-    <version>${testcontainers.version}</version>
+    <version>${junit.version}</version>
     <scope>test</scope>
         </dependency>
+        
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>postgresql</artifactId>
@@ -93,17 +97,28 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-hateoas</artifactId>
-            <scope>test</scope>
-            <version>${springboot.version}</version>
-        </dependency>
-        
-        <dependency>
             <groupId>org.kie</groupId>
             <artifactId>kie-ci</artifactId>
             <version>${kie.version}</version>
             <scope>test</scope>
+        </dependency>
+                
+        <dependency>
+            <groupId>org.hamcrest</groupId>
+            <artifactId>hamcrest</artifactId>
+            <version>${hamcrest.version}</version>
+            <scope>test</scope>
+        </dependency>
+        
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>${slf4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>1.2.3</version>
         </dependency>
                
     </dependencies>
@@ -126,8 +141,8 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>${maven-compiler-plugin.version}</version>
                 <configuration>
-                    <source>1.8</source>
-                    <target>1.8</target>
+                    <source>8</source>
+                    <target>8</target>
                 </configuration>
             </plugin>
             <plugin>

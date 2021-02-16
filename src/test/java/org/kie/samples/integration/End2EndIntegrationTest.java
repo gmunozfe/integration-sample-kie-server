@@ -1,10 +1,23 @@
 package org.kie.samples.integration;
 
+import static java.util.Collections.singletonMap;
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.isA;
+import static org.hamcrest.Matchers.allOf;
+import static org.hamcrest.Matchers.hasProperty;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.testcontainers.containers.BrowserWebDriverContainer.VncRecordingMode.RECORD_ALL;
 
+import java.io.File;
+
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.rules.ExpectedException;
 import org.kie.samples.integration.testcontainers.KieServerContainer;
 import org.kie.samples.integration.testcontainers.LdapContainer;
@@ -18,53 +31,43 @@ import org.kie.server.client.KieServicesConfiguration;
 import org.kie.server.client.KieServicesFactory;
 import org.kie.server.client.ProcessServicesClient;
 import org.kie.server.client.QueryServicesClient;
+import org.openqa.selenium.chrome.ChromeOptions;
+import org.openqa.selenium.remote.RemoteWebDriver;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.annotation.DirtiesContext;
+import org.testcontainers.DockerClientFactory;
+import org.testcontainers.containers.BrowserWebDriverContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import javax.security.auth.Subject;
-import static org.hamcrest.CoreMatchers.isA;
-import static org.hamcrest.CoreMatchers.containsString;
-import static org.hamcrest.Matchers.hasProperty;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 
-import java.security.AccessControlContext;
-import java.security.AccessController;
-import java.security.Principal;
-import java.util.Collections;
-
-import static org.hamcrest.Matchers.allOf;
+import com.github.dockerjava.api.DockerClient;
 
 @Testcontainers(disabledWithoutDocker=true)
-@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-public class KieIntegrationTest {
+public class End2EndIntegrationTest {
     
-    private static Logger logger = LoggerFactory.getLogger(KieIntegrationTest.class);
+    public static final String ARTIFACT_ID = "ldap-sample";
+    public static final String GROUP_ID = "org.kie.server.testing";
+    public static final String VERSION = "1.0.0";
+    public static final String ALIAS = "-alias";
+    
+    public static final String USER_WITH_ADMIN_ROLES = "krisv";
+    public static final String USER_NOT_EXIST = "notExistUser";
+    public static final String EMPTY_USER = "";
+    public static final String CORRECT_PASSWORD = "krisv3";
+    public static final String WRONG_USER = "fake_user";
+    public static final String WRONG_PASSWORD = "krisv";
+    public static final String USER_WITH_NO_ROLES = "userWithNoRoles";
+    public static final String PW_FOR_USER_WITH_NO_ROLES = "pwWithNoRoles";
+    public static final String EMPTY_PASSWORD = "";
+    
+    public static String containerId = GROUP_ID+":"+ARTIFACT_ID+":"+VERSION;
 
+    private static Logger logger = LoggerFactory.getLogger(End2EndIntegrationTest.class);
+
+    @ClassRule
     public static Network network = Network.newNetwork();
-    
-    private static final String ARTIFACT_ID = "ldap-sample";
-    private static final String GROUP_ID = "org.kie.server.testing";
-    private static final String VERSION = "1.0.0";
-    private static final String ALIAS = "-alias";
-    
-    private static final String USER_WITH_ADMIN_ROLES = "krisv";
-    private static final String USER_NOT_EXIST = "notExistUser";
-    private static final String EMPTY_USER = "";
-    private static final String CORRECT_PASSWORD = "krisv3";
-    private static final String WRONG_USER = "fake_user";
-    private static final String WRONG_PASSWORD = "krisv";
-    private static final String USER_WITH_NO_ROLES = "userWithNoRoles";
-    private static final String PW_FOR_USER_WITH_NO_ROLES = "pwWithNoRoles";
-    private static final String EMPTY_PASSWORD = "";
-    
-    private String containerId = GROUP_ID+":"+ARTIFACT_ID+":"+VERSION;
-
     
     @ClassRule
     public static LdapContainer ldap = new LdapContainer(network);
@@ -72,18 +75,30 @@ public class KieIntegrationTest {
     @ClassRule
     public static KieServerContainer kieServer = new KieServerContainer(network);
     
+    @ClassRule
+    public static BrowserWebDriverContainer<?> chrome = new BrowserWebDriverContainer<>()
+            .withNetwork(network)
+            .withNetworkAliases("vnchost")
+            .withCapabilities(new ChromeOptions())
+            .withRecordingMode(RECORD_ALL, new File("target"));
+    
     @Rule
     public ExpectedException exceptionRule = ExpectedException.none();
-    
-    @Value("${server.port:8080}")
-    private String serverPort;
     
     @BeforeClass
     public static void setup() {
         logger.info("KIE SERVER started at port "+kieServer.getKiePort());
         logger.info("LDAP started at port "+ldap.getLdapPort());
     }
-
+    
+    @AfterClass
+    public static void tearDown() throws Exception {
+     DockerClient docker = DockerClientFactory.instance().client();
+     docker.listImagesCmd().withLabelFilter("autodelete=true").exec().stream()
+     .filter(c -> c.getId() != null)
+     .forEach(c -> docker.removeImageCmd(c.getId()).withForce(true).exec());
+    }
+    
     @Test
     public void whenWrongPasswordThenReturnUnauthorized() throws Exception {
         expectedErrorCode(401);
@@ -103,16 +118,38 @@ public class KieIntegrationTest {
     }
     
     @Test
-    public void whenCorrectUserPasswordThenContainerCanBeCreated() throws Exception {
-        KieServicesClient ksClient = authenticate(USER_WITH_ADMIN_ROLES, CORRECT_PASSWORD);
+    @DisplayName("when user logged in has guardRole then restricted var can be changed")
+    public void whenUserLoggedInHasGuardRoleThenRestrictedVarCanBeChanged() throws Exception {
+        KieServicesClient ksClient = authenticate("Bartlet", "123456");
         createContainer(ksClient);
         ProcessServicesClient processClient = ksClient.getServicesClient(ProcessServicesClient.class);
         
         // authorized user can start process instance and update the restricted variable
-        Long processInstanceId = processClient.startProcess(containerId, "HumanTaskWithRestrictedVar", Collections.singletonMap("press", "true"));
+        Long processInstanceId = processClient.startProcess(containerId, "HumanTaskWithRestrictedVar", singletonMap("press", "true"));
         assertNotNull(processInstanceId);
        
         abortProcess(ksClient, processClient, processInstanceId);
+    }
+    
+    @Test
+    public void loginSucessfulWebUI() throws InterruptedException {
+        RemoteWebDriver webDriver = loginUI(USER_WITH_ADMIN_ROLES, CORRECT_PASSWORD);
+
+        boolean loaded = new WebDriverWait(webDriver, 90)
+           .until(ExpectedConditions.urlContains("org.kie.workbench.common.screens.home.client.HomePresenter"));
+        
+        assertTrue(loaded);
+    }
+
+    private RemoteWebDriver loginUI(String user, String password) {
+        RemoteWebDriver webDriver = chrome.getWebDriver();
+
+        webDriver.get("http://kie-server:8080/business-central");
+
+        webDriver.findElementByName("j_username").sendKeys(user);
+        webDriver.findElementByName("j_password").sendKeys(password);
+        webDriver.findElementByXPath("//input[@type='submit']").click();
+        return webDriver;
     }
     
     private void expectedErrorCode(int errorCode) {
@@ -143,6 +180,5 @@ public class KieIntegrationTest {
         assertEquals(1, processInstance.getState().intValue());
         processClient.abortProcessInstance(containerId, processInstanceId);
     }
-    
 }
 

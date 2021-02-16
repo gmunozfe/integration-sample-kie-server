@@ -1,12 +1,14 @@
-# First build kjar from a maven image
+# Multi-stage Dockerfile
+
+# First, build kjar from a maven image
 
 FROM maven:3.6.3-openjdk-8-slim as builder
-
+LABEL autodelete="true"
 COPY etc/kjars/ /etc/kjars/
 RUN mvn --file /etc/kjars/ldap-sample/pom.xml --batch-mode install -DskipTests
 
 #########################################################
-# Dockerfile that provides the image for JBoss KIE Server
+# Dockerfile that provides the image for KIE Server
 #########################################################
 
 FROM jboss/jbpm-server-full:latest
@@ -22,13 +24,7 @@ ENV JAVA_OPTS -Xms256m -Xmx2048m -XX:MetaspaceSize=96M -XX:MaxMetaspaceSize=512m
  -Djbpm.user.info=file:///$JBOSS_HOME/standalone/configuration/jbpm.user.info.properties \
  -Djbpm.usergroup.callback=file:///$JBOSS_HOME/standalone/configuration/jbpm.usergroup.callback.properties \
  -Dorg.kie.controller.ping.alive.timeout=5000000 \
- -Dguard.role=rest-all
- ##-Dorg.kie.controller.ping.alive.disable=true
-## -Dorg.jbpm.ht.admin.user=administrator \
-## -Dorg.jbpm.ht.admin.group=admin
-
-## ADD etc/kie-server-users.properties $JBOSS_HOME/standalone/configuration/application-users.properties
-## ADD etc/kie-server-roles.properties $JBOSS_HOME/standalone/configuration/application-roles.properties
+ -Dguard.role=President
 
 ADD etc/jbpm.user.info.properties $JBOSS_HOME/standalone/configuration/jbpm.user.info.properties
 ADD etc/jbpm.usergroup.callback.properties $JBOSS_HOME/standalone/configuration/jbpm.usergroup.callback.properties
@@ -38,7 +34,7 @@ ADD etc/jbpm-custom.cli $JBOSS_HOME/bin/jbpm-custom.cli
 USER root
 
 RUN chmod +x $JBOSS_HOME/bin/jboss-cli.sh
-RUN chown jboss:jboss -R $JBOSS_HOME
+RUN chown jboss:jboss $JBOSS_HOME/bin/jboss-cli.sh $JBOSS_HOME/bin/jbpm-custom.cli $JBOSS_HOME/standalone/configuration/jbpm.user.info.properties $JBOSS_HOME/standalone/configuration/jbpm.usergroup.callback.properties
 
 USER jboss
 

@@ -80,6 +80,18 @@ displayName: userWithNoRoles of jBPM
 mail: userWithNoRoles@jbpm.org
 userPassword: pwWithNoRoles
 
+dn: uid=Bartlet,ou=People,dc=jbpm,dc=org
+objectclass: top
+objectclass: uidObject
+objectclass: person
+objectClass: inetOrgPerson
+uid: Bartlet
+cn: Bartlet
+sn: Bartlet
+displayName: President Bartlet
+mail: bartlet@jbpm.org
+userPassword: 123456
+
 dn: cn=rest-all,ou=Roles,dc=jbpm,dc=org
 objectClass: groupOfNames
 objectClass: top
@@ -147,3 +159,12 @@ member: uid=john,ou=People,dc=jbpm,dc=org
 member: uid=mary,ou=People,dc=jbpm,dc=org
 member: uid=Administrator,ou=People,dc=jbpm,dc=org
 member: uid=kieserver,ou=People,dc=jbpm,dc=org
+member: uid=Bartlet,ou=People,dc=jbpm,dc=org
+
+dn: cn=President,ou=Roles,dc=jbpm,dc=org
+objectClass: groupOfNames
+objectClass: top
+cn: President
+description: President group
+ou: president@jbpm.org
+member: uid=Bartlet,ou=People,dc=jbpm,dc=org
