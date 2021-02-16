@@ -4,7 +4,7 @@
 
     <groupId>org.kie.samples</groupId>
     <artifactId>integration-sample-kie-server</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>1.0.0</version>
 
     <name>Integration Sample Kie Server</name>
     <description>Integration component created (on Spring Boot) to integrate Kie Server</description>
@@ -35,7 +35,6 @@
             <artifactId>kie-server-client</artifactId>
             <version>${kie.version}</version>
         </dependency>
-
         
         <dependency>
             <groupId>commons-io</groupId>
@@ -80,6 +79,7 @@
             <version>${testcontainers.version}</version>
             <scope>test</scope>
         </dependency>
+        
         <dependency>
     <groupId>org.testcontainers</groupId>
     <artifactId>junit-jupiter</artifactId>

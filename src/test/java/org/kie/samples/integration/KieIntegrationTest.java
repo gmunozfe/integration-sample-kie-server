@@ -12,9 +12,12 @@ import org.kie.server.api.exception.KieServicesHttpException;
 import org.kie.server.api.marshalling.MarshallingFormat;
 import org.kie.server.api.model.KieContainerResource;
 import org.kie.server.api.model.ReleaseId;
+import org.kie.server.api.model.instance.ProcessInstance;
 import org.kie.server.client.KieServicesClient;
 import org.kie.server.client.KieServicesConfiguration;
 import org.kie.server.client.KieServicesFactory;
+import org.kie.server.client.ProcessServicesClient;
+import org.kie.server.client.QueryServicesClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -22,10 +25,18 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.annotation.DirtiesContext;
 import org.testcontainers.containers.Network;
 import org.testcontainers.junit.jupiter.Testcontainers;
-
+import javax.security.auth.Subject;
 import static org.hamcrest.CoreMatchers.isA;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.Matchers.hasProperty;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+
+import java.security.AccessControlContext;
+import java.security.AccessController;
+import java.security.Principal;
+import java.util.Collections;
+
 import static org.hamcrest.Matchers.allOf;
 
 @Testcontainers(disabledWithoutDocker=true)
@@ -84,7 +95,7 @@ public class KieIntegrationTest {
         expectedErrorCode(401);
         authenticate(WRONG_USER, WRONG_PASSWORD);
     }
-    
+   
     @Test
     public void whenNoRolesUserThenReturnForbidden() throws Exception {
         expectedErrorCode(403);
@@ -93,8 +104,15 @@ public class KieIntegrationTest {
     
     @Test
     public void whenCorrectUserPasswordThenContainerCanBeCreated() throws Exception {
-        KieServicesClient client = authenticate(USER_WITH_ADMIN_ROLES, CORRECT_PASSWORD);
-        createContainer(client);
+        KieServicesClient ksClient = authenticate(USER_WITH_ADMIN_ROLES, CORRECT_PASSWORD);
+        createContainer(ksClient);
+        ProcessServicesClient processClient = ksClient.getServicesClient(ProcessServicesClient.class);
+        
+        // authorized user can start process instance and update the restricted variable
+        Long processInstanceId = processClient.startProcess(containerId, "HumanTaskWithRestrictedVar", Collections.singletonMap("press", "true"));
+        assertNotNull(processInstanceId);
+       
+        abortProcess(ksClient, processClient, processInstanceId);
     }
     
     private void expectedErrorCode(int errorCode) {
@@ -115,6 +133,15 @@ public class KieIntegrationTest {
         configuration.setTimeout(60000);
         configuration.setMarshallingFormat(MarshallingFormat.JSON);
         return  KieServicesFactory.newKieServicesClient(configuration);
+    }
+    
+    private void abortProcess(KieServicesClient kieServicesClient, ProcessServicesClient processClient, Long processInstanceId) {
+        QueryServicesClient queryClient = kieServicesClient.getServicesClient(QueryServicesClient.class);
+        
+        ProcessInstance processInstance = queryClient.findProcessInstanceById(processInstanceId);
+        assertNotNull(processInstance);
+        assertEquals(1, processInstance.getState().intValue());
+        processClient.abortProcessInstance(containerId, processInstanceId);
     }
     
 }

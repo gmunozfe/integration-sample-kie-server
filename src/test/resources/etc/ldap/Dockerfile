@@ -5,7 +5,6 @@ FROM maven:3.6.3-openjdk-8-slim as builder
 COPY etc/kjars/ /etc/kjars/
 RUN mvn --file /etc/kjars/ldap-sample/pom.xml --batch-mode install -DskipTests
 
-
 #########################################################
 # Dockerfile that provides the image for JBoss KIE Server
 #########################################################
@@ -22,7 +21,8 @@ ENV JAVA_OPTS -Xms256m -Xmx2048m -XX:MetaspaceSize=96M -XX:MaxMetaspaceSize=512m
  -Dorg.uberfire.domain=ldap -Dorg.jbpm.ht.callback=ldap -Dorg.jbpm.ht.userinfo=ldap \
  -Djbpm.user.info=file:///$JBOSS_HOME/standalone/configuration/jbpm.user.info.properties \
  -Djbpm.usergroup.callback=file:///$JBOSS_HOME/standalone/configuration/jbpm.usergroup.callback.properties \
- -Dorg.kie.controller.ping.alive.timeout=5000000
+ -Dorg.kie.controller.ping.alive.timeout=5000000 \
+ -Dguard.role=rest-all
  ##-Dorg.kie.controller.ping.alive.disable=true
 ## -Dorg.jbpm.ht.admin.user=administrator \
 ## -Dorg.jbpm.ht.admin.group=admin
