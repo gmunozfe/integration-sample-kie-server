@@ -1,0 +1,82 @@
+embed-server --server-config=standalone-full-kie-server.xml
+
+## Activate trace, if needed
+##---------------------------
+/subsystem=logging/logger=org.jboss.security/:add(level=TRACE,use-parent-handlers=true)
+##/subsystem=logging/logger=org.jbpm/:add(level=TRACE,use-parent-handlers=true)
+##/subsystem=logging/logger=org.kie/:add(level=TRACE,use-parent-handlers=true)
+/subsystem=logging/logger=org.wildfly.security/:add(level=TRACE,use-parent-handlers=true)
+/subsystem=logging/logger=org.wildfly.elytron/:add(level=TRACE,use-parent-handlers=true)
+/subsystem=logging/logger=org.wildfly.extension.undertow/:add(level=TRACE,use-parent-handlers=true)
+/subsystem=logging/console-handler=CONSOLE:write-attribute(name=level, value=TRACE)
+##
+
+## Dump http requests
+##-------------------
+## Simple:
+## /subsystem=undertow/server=default-server/host=default-host/setting=access-log:\
+##  add(pattern="%h %t \"%r\" %s ", use-server-log=true)
+##
+## Verbose:
+batch
+/subsystem=undertow/configuration=filter/custom-filter=request-logging-filter:add(class-name=io.undertow.server.handlers.RequestDumpingHandler, module=io.undertow.core)
+/subsystem=undertow/server=default-server/host=default-host/filter-ref=request-logging-filter:add
+run-batch
+
+# Remove former other security-domain at security subsystem
+/subsystem=security/security-domain=other:remove
+
+### ELYTRON
+/extension=org.wildfly.extension.elytron:add()
+/subsystem=elytron:add
+
+/subsystem=elytron/provider-loader=elytron/:add(module=org.wildfly.security.elytron)
+/subsystem=elytron/provider-loader=openssl/:add(module=org.wildfly.openssl)
+/subsystem=elytron/aggregate-providers=combined-providers/:add(providers=[elytron,openssl])
+/subsystem=elytron/file-audit-log=local-audit/:add(path=audit.log,relative-to=jboss.server.log.dir,format=JSON)
+/subsystem=elytron/identity-realm=local/:add(identity="$local")
+
+/subsystem=elytron/permission-set=login-permission:add(permissions=[{class-name=org.wildfly.security.auth.permission.LoginPermission}])
+/subsystem=elytron/permission-set=default-permissions/:add(permissions=[{class-name=org.wildfly.extension.batch.jberet.deployment.BatchPermission,module=org.wildfly.extension.batch.jberet,target-name=*},{class-name=org.wildfly.transaction.client.RemoteTransactionPermission,module=org.wildfly.transaction.client},{class-name=org.jboss.ejb.client.RemoteEJBPermission,module=org.jboss.ejb-client}])
+
+/subsystem=elytron/simple-permission-mapper=default-permission-mapper:add(permission-mappings=[{principals=["anonymous"]},{match-all=true,permission-sets=[{permission-set=login-permission},{permission-set=default-permissions}]}])
+
+/subsystem=elytron/constant-realm-mapper=local/:add(realm-name=local)
+/subsystem=elytron/simple-role-decoder=groups-to-roles/:add(attribute=groups)
+/subsystem=elytron/constant-role-mapper=super-user-mapper/:add(roles=[SuperUser])
+/subsystem=elytron/properties-realm=ApplicationRealm/:add(users-properties={path=application-users.properties,relative-to=jboss.server.config.dir,digest-realm-name=ApplicationRealm},groups-properties={path=application-roles.properties,relative-to=jboss.server.config.dir})
+/subsystem=elytron/security-domain=ApplicationDomain/:add(default-realm=ApplicationRealm,permission-mapper=default-permission-mapper,realms=[{realm=ApplicationRealm,role-decoder=groups-to-roles},{realm=local}])
+
+/subsystem=elytron/provider-http-server-mechanism-factory=global/:add
+
+/subsystem=elytron/simple-role-decoder=from-roles-attribute:add(attribute=Roles) 
+
+/subsystem=elytron/dir-context=ldap-connection:add(url=ldap://ldap-alias:389, principal="cn=admin,dc=jbpm,dc=org", credential-reference={clear-text=admin})
+
+/subsystem=elytron/ldap-realm="KieLdap":add(dir-context=ldap-connection, \
+          direct-verification=true, \
+          identity-mapping={search-base-dn="ou=People,dc=jbpm,dc=org", \
+          rdn-identifier="uid", \
+          attribute-mapping=[{filter-base-dn="ou=Roles,dc=jbpm,dc=org",filter="(member=uid={0},ou=People,dc=jbpm,dc=org)",from="cn",to="Roles"}]})
+
+/subsystem=elytron/security-domain=other:add(realms=[{realm="KieLdap",role-decoder=from-roles-attribute}], default-realm="KieLdap", permission-mapper=default-permission-mapper)
+
+/subsystem=elytron/http-authentication-factory=ldap-http-auth:add(http-server-mechanism-factory=global,security-domain=other,mechanism-configurations=[{mechanism-name=BASIC,mechanism-realm-configurations=[{realm-name="KieLdap"}]}, {mechanism-name=FORM}])
+
+/subsystem=undertow/application-security-domain=other:add(http-authentication-factory=ldap-http-auth)
+
+/subsystem=undertow:write-attribute(name=default-security-domain, value="other")
+
+ ##### disable jacc from security subsystem and add enable at elytron by adding new policy 
+/subsystem=security:write-attribute(name=initialize-jacc, value=false)
+#/subsystem=undertow/application-security-domain=other:write-attribute(name=enable-jacc, value=false)
+/subsystem=elytron/policy=jacc:add(jacc-policy={})
+
+## EJB3
+/subsystem=ejb3/application-security-domain=other:add(security-domain=other)
+
+## messaging-activemq
+/subsystem=messaging-activemq/server=default:undefine-attribute(name=security-domain)
+/subsystem=messaging-activemq/server=default:write-attribute(name=elytron-domain, value=other)
+
+stop-embedded-server

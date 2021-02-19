@@ -26,8 +26,24 @@ embed-server --server-config=standalone.xml
 
 # Remove unused login modules
 #----------------------------
-/subsystem=security/security-domain=other/authentication=classic/login-module=Remoting:remove
-/subsystem=security/security-domain=other/authentication=classic/login-module=RealmDirect:remove
+if (outcome == success) of /subsystem=security/security-domain=other/authentication=classic/login-module=Remoting:read-resource
+   /subsystem=security/security-domain=other/authentication=classic/login-module=Remoting:remove
+else 
+   echo "no Remoting login-module found"
+end-if
+
+if (outcome == success) of /subsystem=security/security-domain=other/authentication=classic/login-module=RealmDirect:read-resource
+   /subsystem=security/security-domain=other/authentication=classic/login-module=RealmDirect:remove
+else 
+   echo "no RealmDirect login-module found"
+end-if
+
+if (outcome == success) of /subsystem=security/security-domain=other/authentication=classic/login-module=UsersRoles:read-resource
+   /subsystem=security/security-domain=other/authentication=classic/login-module=UsersRoles:remove
+else 
+   echo "no UsersRoles login-module found"
+end-if
+
 
 ## KieLoginModule is needed for kie-server-client (business-central)
 ##/subsystem=security/security-domain=other/authentication=classic/login-module=org.kie.security.jaas.KieLoginModule:remove
@@ -111,22 +127,44 @@ end-if
   ###          identity-mapping={search-base-dn="ou=People,dc=jbpm,dc=org", \
   ###          rdn-identifier="uid", \
   ###          attribute-mapping=[{filter-base-dn="ou=Roles,dc=jbpm,dc=org",filter="(member=uid={0},ou=People,dc=jbpm,dc=org)",from="cn",to="Roles"}]})
-  
-  /subsystem=elytron/simple-role-decoder=from-roles-attribute:add(attribute=Roles) 
-  
-  /subsystem=elytron/security-domain=KIEDomain:add(realms=[{realm="LegacyRealm",role-decoder=from-roles-attribute}], default-realm="LegacyRealm", permission-mapper=default-permission-mapper)
-  
-  /subsystem=elytron/http-authentication-factory=ldap-http-auth:add(http-server-mechanism-factory=global,security-domain=KIEDomain,mechanism-configurations=[{mechanism-name=BASIC,mechanism-realm-configurations=[{realm-name="LegacyRealm"}]}, {mechanism-name=FORM}])
-  
-  /subsystem=undertow/application-security-domain=KIEDomain:add(http-authentication-factory=ldap-http-auth)
 
-  /subsystem=undertow:write-attribute(name=default-security-domain, value="KIEDomain")
 
-  ##### disable jacc from security subsystem and add enable at elytron by adding new policy 
-  
-  /subsystem=security:write-attribute(name=initialize-jacc, value=false)
-  /subsystem=elytron/policy=jacc:add(jacc-policy={})
-  /subsystem=undertow/application-security-domain=KIEDomain:write-attribute(name=enable-jacc, value=true)
+#################################################################################
+#
+#/extension=org.wildfly.extension.elytron:add()
+#
+#/subsystem=elytron:add
+#
+#if (outcome == failed) of /subsystem=elytron/permission-set=login-permission/:read-resource
+#  echo Adding permission-set=login-permission to elytron
+#  /subsystem=elytron/permission-set=login-permission:add(permissions=[{class-name=org.wildfly.security.auth.permission.LoginPermission}])
+#  /subsystem=elytron/permission-set=default-permissions/:add(permissions=[{class-name=org.wildfly.extension.batch.jberet.deployment.BatchPermission,module=org.wildfly.extension.batch.jberet,target-name=*},{class-name=org.wildfly.transaction.client.RemoteTransactionPermission,module=org.wildfly.transaction.client},{class-name=org.jboss.ejb.client.RemoteEJBPermission,module=org.jboss.ejb-client}])
+#  echo
+#end-if
+#
+#
+#/subsystem=elytron/simple-permission-mapper=default-permission-mapper:add(permission-mappings=[{principals=["anonymous"]},{match-all=true,permission-sets=[{permission-set=login-permission},{permission-set=default-permissions}]}])
+#
+#
+#/subsystem=elytron/provider-http-server-mechanism-factory=global/:add
+#
+##################################################################################
+
+/subsystem=elytron/simple-role-decoder=from-roles-attribute:add(attribute=Roles) 
+
+/subsystem=elytron/security-domain=KIEDomain:add(realms=[{realm="LegacyRealm",role-decoder=from-roles-attribute}], default-realm="LegacyRealm", permission-mapper=default-permission-mapper)
+
+/subsystem=elytron/http-authentication-factory=ldap-http-auth:add(http-server-mechanism-factory=global,security-domain=KIEDomain,mechanism-configurations=[{mechanism-name=BASIC,mechanism-realm-configurations=[{realm-name="LegacyRealm"}]}, {mechanism-name=FORM}])
+
+/subsystem=undertow/application-security-domain=KIEDomain:add(http-authentication-factory=ldap-http-auth)
+
+/subsystem=undertow:write-attribute(name=default-security-domain, value="KIEDomain")
+
+ ##### disable jacc from security subsystem and add enable at elytron by adding new policy 
+ 
+ /subsystem=security:write-attribute(name=initialize-jacc, value=false)
+ /subsystem=elytron/policy=jacc:add(jacc-policy={})
+ /subsystem=undertow/application-security-domain=KIEDomain:write-attribute(name=enable-jacc, value=true)
 
 
 stop-embedded-server

@@ -1,16 +1,19 @@
 package org.kie.samples.integration;
 
 import static java.util.Collections.singletonMap;
+
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.isA;
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.hasProperty;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertNull;
 import static org.testcontainers.containers.BrowserWebDriverContainer.VncRecordingMode.RECORD_ALL;
 
 import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -33,8 +36,6 @@ import org.kie.server.client.ProcessServicesClient;
 import org.kie.server.client.QueryServicesClient;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.remote.RemoteWebDriver;
-import org.openqa.selenium.support.ui.ExpectedConditions;
-import org.openqa.selenium.support.ui.WebDriverWait;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.DockerClientFactory;
@@ -65,7 +66,15 @@ public class End2EndIntegrationTest {
     public static String containerId = GROUP_ID+":"+ARTIFACT_ID+":"+VERSION;
 
     private static Logger logger = LoggerFactory.getLogger(End2EndIntegrationTest.class);
+    
+    private static Map<String, String> args = new HashMap<>();
 
+    static {
+        args.put("IMAGE_NAME", System.getProperty("org.kie.samples.image"));
+        args.put("START_SCRIPT", System.getProperty("org.kie.samples.script"));
+        args.put("SERVER", System.getProperty("org.kie.samples.server"));
+    }
+    
     @ClassRule
     public static Network network = Network.newNetwork();
     
@@ -73,7 +82,7 @@ public class End2EndIntegrationTest {
     public static LdapContainer ldap = new LdapContainer(network);
 
     @ClassRule
-    public static KieServerContainer kieServer = new KieServerContainer(network);
+    public static KieServerContainer kieServer = new KieServerContainer(network, args);
     
     @ClassRule
     public static BrowserWebDriverContainer<?> chrome = new BrowserWebDriverContainer<>()
@@ -91,7 +100,7 @@ public class End2EndIntegrationTest {
         logger.info("LDAP started at port "+ldap.getLdapPort());
     }
     
-    @AfterClass
+	@AfterClass
     public static void tearDown() throws Exception {
      DockerClient docker = DockerClientFactory.instance().client();
      docker.listImagesCmd().withLabelFilter("autodelete=true").exec().stream()
@@ -99,39 +108,71 @@ public class End2EndIntegrationTest {
      .forEach(c -> docker.removeImageCmd(c.getId()).withForce(true).exec());
     }
     
+    
     @Test
     public void whenWrongPasswordThenReturnUnauthorized() throws Exception {
-        expectedErrorCode(401);
+        expectedError("Error code: 401");
         authenticate(USER_WITH_ADMIN_ROLES, WRONG_PASSWORD);
     }
     
     @Test
     public void whenWrongUserThenReturnUnauthorized() throws Exception {
-        expectedErrorCode(401);
+    	expectedError("Error code: 401");
         authenticate(WRONG_USER, WRONG_PASSWORD);
     }
    
     @Test
     public void whenNoRolesUserThenReturnForbidden() throws Exception {
-        expectedErrorCode(403);
+    	expectedError("Error code: 403");
         authenticate(USER_WITH_NO_ROLES, PW_FOR_USER_WITH_NO_ROLES);
     }
     
     @Test
     @DisplayName("when user logged in has guardRole then restricted var can be changed")
     public void whenUserLoggedInHasGuardRoleThenRestrictedVarCanBeChanged() throws Exception {
-        KieServicesClient ksClient = authenticate("Bartlet", "123456");
+    	KieServicesClient ksClient = authenticate("Bartlet", "123456");
+    	
         createContainer(ksClient);
         ProcessServicesClient processClient = ksClient.getServicesClient(ProcessServicesClient.class);
-        
         // authorized user can start process instance and update the restricted variable
         Long processInstanceId = processClient.startProcess(containerId, "HumanTaskWithRestrictedVar", singletonMap("press", "true"));
         assertNotNull(processInstanceId);
        
         abortProcess(ksClient, processClient, processInstanceId);
+        ksClient.disposeContainer(containerId);
     }
     
     @Test
+    @DisplayName("when user logged in hasn't guardRole then restricted var cannot be changed")
+    public void whenUserLoggedInHasnotGuardRoleThenRestrictedVarCannotBeChanged() throws Exception {
+    	KieServicesClient ksClient = authenticate("krisv", "krisv3");
+        
+        createContainer(ksClient);
+        ProcessServicesClient processClient = ksClient.getServicesClient(ProcessServicesClient.class);
+        
+        exceptionRule.expectMessage("violated");
+        Long processInstanceId = processClient.startProcess(containerId, "HumanTaskWithRestrictedVar", singletonMap("press", "true"));
+        assertNull(processInstanceId);
+        
+        ksClient.disposeContainer(containerId);
+    }
+    
+    @Test
+    @DisplayName("when user logged in hasn't guardRole then can start process without changing restricted var")
+    public void whenUserLoggedInHasNotGuardRoleThenCanStartProcess() throws Exception {
+    	KieServicesClient ksClient = authenticate("krisv", "krisv3");
+    	
+        createContainer(ksClient);
+        ProcessServicesClient processClient = ksClient.getServicesClient(ProcessServicesClient.class);
+        // authorized user can start process instance and update the restricted variable
+        Long processInstanceId = processClient.startProcess(containerId, "HumanTaskWithRestrictedVar");
+        assertNotNull(processInstanceId);
+       
+        abortProcess(ksClient, processClient, processInstanceId);
+        ksClient.disposeContainer(containerId);
+    }
+    
+    /*@Test
     public void loginSucessfulWebUI() throws InterruptedException {
         RemoteWebDriver webDriver = loginUI(USER_WITH_ADMIN_ROLES, CORRECT_PASSWORD);
 
@@ -139,7 +180,7 @@ public class End2EndIntegrationTest {
            .until(ExpectedConditions.urlContains("org.kie.workbench.common.screens.home.client.HomePresenter"));
         
         assertTrue(loaded);
-    }
+    }*/
 
     private RemoteWebDriver loginUI(String user, String password) {
         RemoteWebDriver webDriver = chrome.getWebDriver();
@@ -152,8 +193,8 @@ public class End2EndIntegrationTest {
         return webDriver;
     }
     
-    private void expectedErrorCode(int errorCode) {
-        exceptionRule.expectCause(allOf(isA(KieServicesHttpException.class), hasProperty("message", containsString("Error code: "+errorCode))));
+    private void expectedError(String message) {
+        exceptionRule.expectCause(allOf(isA(KieServicesHttpException.class), hasProperty("message", containsString(message))));
     }
     
     private void createContainer(KieServicesClient client) {

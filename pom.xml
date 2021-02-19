@@ -123,8 +123,7 @@
                
     </dependencies>
 
-
-    <build>
+<build>
         <testResources>
             <testResource>
                 <directory>src/test/resources</directory>
@@ -150,8 +149,41 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>${maven-surefire-plugin.version}</version>
                 <inherited>true</inherited>
-            </plugin>
-        </plugins>
+                <configuration>
+                   <systemPropertyVariables>
+                     <org.kie.samples.image>${org.kie.samples.image}</org.kie.samples.image>
+                     <org.kie.samples.script>${org.kie.samples.script}</org.kie.samples.script>
+                     <org.kie.samples.server>${org.kie.samples.server}</org.kie.samples.server>
+                   </systemPropertyVariables>
+                 </configuration>
+             </plugin>
+           </plugins>
     </build>
+    
+    <profiles>
+     <profile>
+      <id>kie-server</id>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
+      <properties>
+        <org.kie.samples.image>jboss/kie-server-showcase:latest</org.kie.samples.image>
+        <org.kie.samples.script>start_kie-server.sh</org.kie.samples.script>
+        <org.kie.samples.server>kie-server</org.kie.samples.server>
+      </properties>
+     </profile>
+     <profile>
+      <id>full</id>
+      <properties>
+        <org.kie.samples.image>jboss/jbpm-server-full:latest</org.kie.samples.image>
+        <org.kie.samples.script>start_jbpm-wb.sh</org.kie.samples.script>
+        <org.kie.samples.server>full</org.kie.samples.server>
+      </properties>
+     </profile>
+    </profiles>
+    
+    
+    
+
 
 </project>
