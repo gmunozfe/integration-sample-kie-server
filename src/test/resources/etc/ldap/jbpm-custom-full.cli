@@ -2,13 +2,14 @@ embed-server --server-config=standalone.xml
 
 ## Activate trace, if needed
 ##---------------------------
-##/subsystem=logging/logger=org.jboss.security/:add(level=TRACE,use-parent-handlers=true)
+/subsystem=logging/logger=org.jboss.security/:add(level=TRACE,use-parent-handlers=true)
+/subsystem=logging/logger=javax.security/:add(level=TRACE,use-parent-handlers=true)
 ##/subsystem=logging/logger=org.jbpm/:add(level=TRACE,use-parent-handlers=true)
 ##/subsystem=logging/logger=org.kie/:add(level=TRACE,use-parent-handlers=true)
-##/subsystem=logging/logger=org.wildfly.security/:add(level=TRACE,use-parent-handlers=true)
-##/subsystem=logging/logger=org.wildfly.elytron/:add(level=TRACE,use-parent-handlers=true)
-##/subsystem=logging/logger=org.wildfly.extension.undertow/:add(level=TRACE,use-parent-handlers=true)
-##/subsystem=logging/console-handler=CONSOLE:write-attribute(name=level, value=TRACE)
+/subsystem=logging/logger=org.wildfly.security/:add(level=TRACE,use-parent-handlers=true)
+/subsystem=logging/logger=org.wildfly.elytron/:add(level=TRACE,use-parent-handlers=true)
+/subsystem=logging/logger=org.wildfly.extension.undertow/:add(level=TRACE,use-parent-handlers=true)
+/subsystem=logging/console-handler=CONSOLE:write-attribute(name=level, value=TRACE)
 ##
 
 ## Dump http requests
@@ -69,6 +70,8 @@ end-if
    ("allowEmptyPasswords" => "false"), \
    ("throwValidateError" => "true"), \
    ("baseFilter" => "(uid={0})")])
+   
+   
 
 if (outcome != success) of /system-property=org.kie.demo:read-resource
 	/system-property=org.kie.server.id:add(value="${org.kie.demo:true}")
@@ -119,52 +122,26 @@ end-if
   # Link legacy security domain (other) with a new elytron-realm
   /subsystem=security/elytron-realm=LegacyRealm:add(legacy-jaas-config=other)
   
-  ### If business-central didn't require the KieLoginModule, ldap-realm could be created directly at Elytron
-  ###/subsystem=elytron/dir-context=ldap-connection:add(url=ldap://ldap-alias:389, principal="cn=admin,dc=jbpm,dc=org", credential-reference={clear-text=admin})
-  ###
-  ###/subsystem=elytron/ldap-realm="KieLdap":add(dir-context=ldap-connection, \
-  ###          direct-verification=true, \
-  ###          identity-mapping={search-base-dn="ou=People,dc=jbpm,dc=org", \
-  ###          rdn-identifier="uid", \
-  ###          attribute-mapping=[{filter-base-dn="ou=Roles,dc=jbpm,dc=org",filter="(member=uid={0},ou=People,dc=jbpm,dc=org)",from="cn",to="Roles"}]})
 
+###/subsystem=elytron/simple-role-decoder=from-roles-attribute:add(attribute=Roles) 
 
-#################################################################################
-#
-#/extension=org.wildfly.extension.elytron:add()
-#
-#/subsystem=elytron:add
-#
-#if (outcome == failed) of /subsystem=elytron/permission-set=login-permission/:read-resource
-#  echo Adding permission-set=login-permission to elytron
-#  /subsystem=elytron/permission-set=login-permission:add(permissions=[{class-name=org.wildfly.security.auth.permission.LoginPermission}])
-#  /subsystem=elytron/permission-set=default-permissions/:add(permissions=[{class-name=org.wildfly.extension.batch.jberet.deployment.BatchPermission,module=org.wildfly.extension.batch.jberet,target-name=*},{class-name=org.wildfly.transaction.client.RemoteTransactionPermission,module=org.wildfly.transaction.client},{class-name=org.jboss.ejb.client.RemoteEJBPermission,module=org.jboss.ejb-client}])
-#  echo
-#end-if
-#
-#
-#/subsystem=elytron/simple-permission-mapper=default-permission-mapper:add(permission-mappings=[{principals=["anonymous"]},{match-all=true,permission-sets=[{permission-set=login-permission},{permission-set=default-permissions}]}])
-#
-#
-#/subsystem=elytron/provider-http-server-mechanism-factory=global/:add
-#
-##################################################################################
+###/subsystem=elytron/security-domain=KIEDomain:add(realms=[{realm=LegacyRealm,role-decoder=from-roles-attribute}], default-realm=LegacyRealm, permission-mapper=default-permission-mapper)
 
-/subsystem=elytron/simple-role-decoder=from-roles-attribute:add(attribute=Roles) 
+/subsystem=elytron/security-domain=KIEDomain:add(realms=[{realm=LegacyRealm}], default-realm=LegacyRealm, permission-mapper=default-permission-mapper)
 
-/subsystem=elytron/security-domain=KIEDomain:add(realms=[{realm="LegacyRealm",role-decoder=from-roles-attribute}], default-realm="LegacyRealm", permission-mapper=default-permission-mapper)
 
 /subsystem=elytron/http-authentication-factory=ldap-http-auth:add(http-server-mechanism-factory=global,security-domain=KIEDomain,mechanism-configurations=[{mechanism-name=BASIC,mechanism-realm-configurations=[{realm-name="LegacyRealm"}]}, {mechanism-name=FORM}])
 
 /subsystem=undertow/application-security-domain=KIEDomain:add(http-authentication-factory=ldap-http-auth)
 
-/subsystem=undertow:write-attribute(name=default-security-domain, value="KIEDomain")
+/subsystem=undertow:write-attribute(name=default-security-domain, value=KIEDomain)
 
  ##### disable jacc from security subsystem and add enable at elytron by adding new policy 
  
- /subsystem=security:write-attribute(name=initialize-jacc, value=false)
- /subsystem=elytron/policy=jacc:add(jacc-policy={})
- /subsystem=undertow/application-security-domain=KIEDomain:write-attribute(name=enable-jacc, value=true)
+#/subsystem=security:write-attribute(name=initialize-jacc, value=false)
+#/subsystem=undertow/application-security-domain=KIEDomain:write-attribute(name=enable-jacc, value=false)
+#/subsystem=elytron/policy=jacc:add(jacc-policy={})
+ 
 
 
 stop-embedded-server

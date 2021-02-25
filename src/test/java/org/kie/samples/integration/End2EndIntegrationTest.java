@@ -9,9 +9,9 @@ import static org.hamcrest.Matchers.hasProperty;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
-import static org.testcontainers.containers.BrowserWebDriverContainer.VncRecordingMode.RECORD_ALL;
+//import static org.testcontainers.containers.BrowserWebDriverContainer.VncRecordingMode.RECORD_ALL;
+import static org.junit.Assume.assumeTrue;
 
-import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -34,12 +34,12 @@ import org.kie.server.client.KieServicesConfiguration;
 import org.kie.server.client.KieServicesFactory;
 import org.kie.server.client.ProcessServicesClient;
 import org.kie.server.client.QueryServicesClient;
-import org.openqa.selenium.chrome.ChromeOptions;
-import org.openqa.selenium.remote.RemoteWebDriver;
+//import org.openqa.selenium.chrome.ChromeOptions;
+//import org.openqa.selenium.remote.RemoteWebDriver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.DockerClientFactory;
-import org.testcontainers.containers.BrowserWebDriverContainer;
+//import org.testcontainers.containers.BrowserWebDriverContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
@@ -62,7 +62,9 @@ public class End2EndIntegrationTest {
     public static final String USER_WITH_NO_ROLES = "userWithNoRoles";
     public static final String PW_FOR_USER_WITH_NO_ROLES = "pwWithNoRoles";
     public static final String EMPTY_PASSWORD = "";
-    
+    public static final String USER_WITH_GUARD_ROLE = "Bartlet";
+    public static final String GUARD_ROLE_USER_PASSWORD = "123456";
+
     public static String containerId = GROUP_ID+":"+ARTIFACT_ID+":"+VERSION;
 
     private static Logger logger = LoggerFactory.getLogger(End2EndIntegrationTest.class);
@@ -84,12 +86,12 @@ public class End2EndIntegrationTest {
     @ClassRule
     public static KieServerContainer kieServer = new KieServerContainer(network, args);
     
-    @ClassRule
+    /*@ClassRule
     public static BrowserWebDriverContainer<?> chrome = new BrowserWebDriverContainer<>()
             .withNetwork(network)
             .withNetworkAliases("vnchost")
             .withCapabilities(new ChromeOptions())
-            .withRecordingMode(RECORD_ALL, new File("target"));
+            .withRecordingMode(RECORD_ALL, new File("target"));*/
     
     @Rule
     public ExpectedException exceptionRule = ExpectedException.none();
@@ -100,7 +102,7 @@ public class End2EndIntegrationTest {
         logger.info("LDAP started at port "+ldap.getLdapPort());
     }
     
-	@AfterClass
+    @AfterClass
     public static void tearDown() throws Exception {
      DockerClient docker = DockerClientFactory.instance().client();
      docker.listImagesCmd().withLabelFilter("autodelete=true").exec().stream()
@@ -110,28 +112,31 @@ public class End2EndIntegrationTest {
     
     
     @Test
+    @DisplayName("when user uses a wrong password then login request return 401 - Unauthorized") 
     public void whenWrongPasswordThenReturnUnauthorized() throws Exception {
         expectedError("Error code: 401");
         authenticate(USER_WITH_ADMIN_ROLES, WRONG_PASSWORD);
     }
     
     @Test
+    @DisplayName("when user uses a wrong username then login request return 401 - Unauthorized") 
     public void whenWrongUserThenReturnUnauthorized() throws Exception {
-    	expectedError("Error code: 401");
+        expectedError("Error code: 401");
         authenticate(WRONG_USER, WRONG_PASSWORD);
     }
    
     @Test
+    @DisplayName("when user has no associated roles then login request return 403 - Forbidden") 
     public void whenNoRolesUserThenReturnForbidden() throws Exception {
-    	expectedError("Error code: 403");
+        expectedError("Error code: 403");
         authenticate(USER_WITH_NO_ROLES, PW_FOR_USER_WITH_NO_ROLES);
     }
     
     @Test
     @DisplayName("when user logged in has guardRole then restricted var can be changed")
     public void whenUserLoggedInHasGuardRoleThenRestrictedVarCanBeChanged() throws Exception {
-    	KieServicesClient ksClient = authenticate("Bartlet", "123456");
-    	
+        KieServicesClient ksClient = authenticate(USER_WITH_GUARD_ROLE, GUARD_ROLE_USER_PASSWORD);
+        
         createContainer(ksClient);
         ProcessServicesClient processClient = ksClient.getServicesClient(ProcessServicesClient.class);
         // authorized user can start process instance and update the restricted variable
@@ -145,7 +150,7 @@ public class End2EndIntegrationTest {
     @Test
     @DisplayName("when user logged in hasn't guardRole then restricted var cannot be changed")
     public void whenUserLoggedInHasnotGuardRoleThenRestrictedVarCannotBeChanged() throws Exception {
-    	KieServicesClient ksClient = authenticate("krisv", "krisv3");
+        KieServicesClient ksClient = authenticate(USER_WITH_ADMIN_ROLES, CORRECT_PASSWORD);
         
         createContainer(ksClient);
         ProcessServicesClient processClient = ksClient.getServicesClient(ProcessServicesClient.class);
@@ -160,8 +165,8 @@ public class End2EndIntegrationTest {
     @Test
     @DisplayName("when user logged in hasn't guardRole then can start process without changing restricted var")
     public void whenUserLoggedInHasNotGuardRoleThenCanStartProcess() throws Exception {
-    	KieServicesClient ksClient = authenticate("krisv", "krisv3");
-    	
+        KieServicesClient ksClient = authenticate(USER_WITH_ADMIN_ROLES, CORRECT_PASSWORD);
+        
         createContainer(ksClient);
         ProcessServicesClient processClient = ksClient.getServicesClient(ProcessServicesClient.class);
         // authorized user can start process instance and update the restricted variable
@@ -172,6 +177,15 @@ public class End2EndIntegrationTest {
         ksClient.disposeContainer(containerId);
     }
     
+    @Test
+    @DisplayName("when user is anonymous then login request return 401 - Unauthorized -only valid for kie-server scenario") 
+    public void whenUserIsAnonymousLoginIsNotAllowed() throws Exception {
+        //Only executed for kie-server image
+        assumeTrue("kie-server".equals(args.get("SERVER")));
+        expectedError("Error code: 401");
+        authenticate("anonymous", "anonymous");
+    }
+    
     /*@Test
     public void loginSucessfulWebUI() throws InterruptedException {
         RemoteWebDriver webDriver = loginUI(USER_WITH_ADMIN_ROLES, CORRECT_PASSWORD);
@@ -180,7 +194,7 @@ public class End2EndIntegrationTest {
            .until(ExpectedConditions.urlContains("org.kie.workbench.common.screens.home.client.HomePresenter"));
         
         assertTrue(loaded);
-    }*/
+    }
 
     private RemoteWebDriver loginUI(String user, String password) {
         RemoteWebDriver webDriver = chrome.getWebDriver();
@@ -191,7 +205,7 @@ public class End2EndIntegrationTest {
         webDriver.findElementByName("j_password").sendKeys(password);
         webDriver.findElementByXPath("//input[@type='submit']").click();
         return webDriver;
-    }
+    }*/
     
     private void expectedError(String message) {
         exceptionRule.expectCause(allOf(isA(KieServicesHttpException.class), hasProperty("message", containsString(message))));

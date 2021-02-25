@@ -25,13 +25,9 @@ public class LdapContainer extends GenericContainer<LdapContainer>{
        withExposedPorts(LDAP_PORT);
        withEnv("LDAP_DOMAIN","jbpm.org");
        withEnv("LDAP_ADMIN_PASSWORD","admin");
-       withEnv("LDAP_CONFIG_PASSWORD","admin");
-       withEnv("LDAP_READONLY_USER","false");
-       
        withLogConsumer(new Slf4jLogConsumer(logger).withPrefix("LDAP-LOG"));
        withClasspathResourceMapping("etc/ldap/jbpm.ldif", "/container/service/slapd/assets/config/bootstrap/ldif/custom/jbpm.ldif", BindMode.READ_ONLY);
        withCommand("--copy-service");
-       
     }
 
     public Integer getLdapPort() {
