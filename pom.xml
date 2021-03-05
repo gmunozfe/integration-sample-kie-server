@@ -94,6 +94,37 @@
       <version>${kie.version}</version>
       <scope>test</scope>
     </dependency>
+    
+    <dependency>
+     <groupId>org.wildfly</groupId>
+     <artifactId>wildfly-jms-client-bom</artifactId>
+     <version>19.1.0.Final</version>
+     <type>pom</type>
+     <exclusions>
+       <exclusion>
+           <groupId>jakarta.json</groupId>
+           <artifactId>jakarta.json-api</artifactId>
+       </exclusion>
+       <exclusion>
+           <groupId>org.apache.geronimo.specs</groupId>
+           <artifactId>geronimo-jms_2.0_spec</artifactId>
+       </exclusion>
+       <exclusion>
+           <groupId>io.netty</groupId>
+           <artifactId>netty-transport-native-epoll</artifactId>
+       </exclusion>
+       <exclusion>
+           <groupId>org.apache.geronimo.specs</groupId>
+           <artifactId>geronimo-json_1.0_spec</artifactId>
+       </exclusion>
+      </exclusions>
+    </dependency>
+    
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-transport-native-epoll</artifactId>
+      <version>4.1.59.Final</version>
+    </dependency>
 
     <dependency>
       <groupId>org.hamcrest</groupId>

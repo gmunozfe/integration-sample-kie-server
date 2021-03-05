@@ -15,7 +15,8 @@ public class KieServerContainer extends GenericContainer<KieServerContainer>{
 
 	private static Logger logger = LoggerFactory.getLogger(KieServerContainer.class);
 
-	private static final int KIE_PORT = 8080;
+	private static final int KIE_HTTP_PORT = 8080;
+	//private static final int KIE_EJB_PORT = 4447;
 	
 	public KieServerContainer(Network network, Map<String,String> args) {
 	  super( new ImageFromDockerfile()
@@ -29,12 +30,16 @@ public class KieServerContainer extends GenericContainer<KieServerContainer>{
 	  withEnv("START_SCRIPT", args.get("START_SCRIPT"));
 	  withNetwork(network);
 	  withNetworkAliases("kie-server");
-      withExposedPorts(KIE_PORT);
+      withExposedPorts(KIE_HTTP_PORT/*, KIE_EJB_PORT*/);
       withLogConsumer(new Slf4jLogConsumer(logger).withPrefix("KIE-LOG"));
       waitingFor(Wait.forLogMessage(".*WildFly.*started in.*", 1).withStartupTimeout(Duration.ofMinutes(5L)));
 	}
 	
-	public Integer getKiePort() {
-	    return this.getMappedPort(KIE_PORT);
+	public Integer getKieHttpPort() {
+	    return this.getMappedPort(KIE_HTTP_PORT);
+    }
+	
+	public String getKieHost() {
+	    return this.getContainerIpAddress();
     }
 }

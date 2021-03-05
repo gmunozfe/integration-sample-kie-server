@@ -12,8 +12,18 @@ import static org.junit.Assert.assertNull;
 //import static org.testcontainers.containers.BrowserWebDriverContainer.VncRecordingMode.RECORD_ALL;
 import static org.junit.Assume.assumeTrue;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
+
+import javax.jms.ConnectionFactory;
+import javax.jms.Queue;
+import javax.naming.Context;
+import javax.naming.InitialContext;
+import javax.naming.NamingException;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -22,6 +32,8 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.rules.ExpectedException;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 import org.kie.samples.integration.testcontainers.KieServerContainer;
 import org.kie.samples.integration.testcontainers.LdapContainer;
 import org.kie.server.api.exception.KieServicesHttpException;
@@ -46,6 +58,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import com.github.dockerjava.api.DockerClient;
 
 @Testcontainers(disabledWithoutDocker=true)
+@RunWith(Parameterized.class)
 public class End2EndIntegrationTest {
     
     public static final String ARTIFACT_ID = "ldap-sample";
@@ -70,7 +83,7 @@ public class End2EndIntegrationTest {
     private static Logger logger = LoggerFactory.getLogger(End2EndIntegrationTest.class);
     
     private static Map<String, String> args = new HashMap<>();
-
+    
     static {
         args.put("IMAGE_NAME", System.getProperty("org.kie.samples.image"));
         args.put("START_SCRIPT", System.getProperty("org.kie.samples.script"));
@@ -96,9 +109,28 @@ public class End2EndIntegrationTest {
     @Rule
     public ExpectedException exceptionRule = ExpectedException.none();
     
+    @Parameterized.Parameters(name = "{index}: {0}")
+    public static Collection<Object[]> data() {
+        /*Collection<Object[]> parameterData = new ArrayList<Object[]>(Arrays.asList(new Object[][]
+                        {{"restConfiguration"}}
+        ));*/
+
+        Collection<Object[]> parameterData = new ArrayList<Object[]>();
+        //KieServicesConfiguration jmsConfiguration = createKieServicesJmsConfiguration();
+        parameterData.addAll(Arrays.asList(new Object[][]
+                            {{"jmsConfiguration"}}
+        ));
+       return parameterData;
+    }
+    
+    
+
+    @Parameterized.Parameter(0)
+    public String /*KieServicesConfiguration*/ strConfiguration;
+    
     @BeforeClass
     public static void setup() {
-        logger.info("KIE SERVER started at port "+kieServer.getKiePort());
+        logger.info("KIE SERVER started at port "+kieServer.getKieHttpPort());
         logger.info("LDAP started at port "+ldap.getLdapPort());
     }
     
@@ -110,7 +142,7 @@ public class End2EndIntegrationTest {
      .forEach(c -> docker.removeImageCmd(c.getId()).withForce(true).exec());
     }
     
-    
+    /*
     @Test
     @DisplayName("when user uses a wrong password then login request return 401 - Unauthorized") 
     public void whenWrongPasswordThenReturnUnauthorized() throws Exception {
@@ -160,11 +192,13 @@ public class End2EndIntegrationTest {
         assertNull(processInstanceId);
         
         ksClient.disposeContainer(containerId);
-    }
+    }*/
     
     @Test
     @DisplayName("when user logged in hasn't guardRole then can start process without changing restricted var")
     public void whenUserLoggedInHasNotGuardRoleThenCanStartProcess() throws Exception {
+        Thread.sleep(60000);
+        logger.info("@@@ AFTER SLEEP");
         KieServicesClient ksClient = authenticate(USER_WITH_ADMIN_ROLES, CORRECT_PASSWORD);
         
         createContainer(ksClient);
@@ -176,7 +210,7 @@ public class End2EndIntegrationTest {
         abortProcess(ksClient, processClient, processInstanceId);
         ksClient.disposeContainer(containerId);
     }
-    
+    /*
     @Test
     @DisplayName("when user is anonymous then login request return 401 - Unauthorized -only valid for kie-server scenario") 
     public void whenUserIsAnonymousLoginIsNotAllowed() throws Exception {
@@ -184,7 +218,7 @@ public class End2EndIntegrationTest {
         assumeTrue("kie-server".equals(args.get("SERVER")));
         expectedError("Error code: 401");
         authenticate("anonymous", "anonymous");
-    }
+    }*/
     
     /*@Test
     public void loginSucessfulWebUI() throws InterruptedException {
@@ -219,13 +253,61 @@ public class End2EndIntegrationTest {
     }
 
     private KieServicesClient authenticate(String user, String password) {
-        String serverUrl = "http://localhost:" + kieServer.getKiePort() + "/kie-server/services/rest/server";
+        /*String serverUrl = "http://localhost:" + kieServer.getKiePort() + "/kie-server/services/rest/server";
         KieServicesConfiguration configuration = KieServicesFactory.newRestConfiguration(serverUrl, user, password);
         
         configuration.setTimeout(60000);
-        configuration.setMarshallingFormat(MarshallingFormat.JSON);
+        configuration.setMarshallingFormat(MarshallingFormat.JSON);*/
+        
+        KieServicesConfiguration configuration;
+        if ("restConfiguration".equals(strConfiguration)) {
+            configuration = KieServicesFactory.newRestConfiguration("http://localhost:" + kieServer.getKieHttpPort() + "/kie-server/services/rest/server", user, password);
+            configuration.setTimeout(60000);
+            configuration.setMarshallingFormat(MarshallingFormat.JSON);
+        } else {
+            configuration = createKieServicesJmsConfiguration();
+            configuration.setUserName(user);
+            configuration.setPassword(password);
+        }
         return  KieServicesFactory.newKieServicesClient(configuration);
     }
+    
+    private static KieServicesConfiguration createKieServicesJmsConfiguration() {
+        try {
+            InitialContext context = getInitialRemoteContext();
+
+            logger.info("@@@lookup factory");
+            ConnectionFactory connectionFactory = (ConnectionFactory) context.lookup("jms/RemoteConnectionFactory");
+            logger.info("@@@lookup jms/queue/KIE.SERVER.REQUEST");
+            Queue requestQueue = (Queue) context.lookup("jms/queue/KIE.SERVER.REQUEST");
+            logger.info("@@@lookup jms/queue/KIE.SERVER.RESPONSE");
+            Queue responseQueue = (Queue) context.lookup("jms/queue/KIE.SERVER.RESPONSE");
+            logger.info("@@@lookup end");
+            KieServicesConfiguration jmsConfiguration = KieServicesFactory.newJMSConfiguration(
+                    connectionFactory, requestQueue, responseQueue);
+
+            return jmsConfiguration;
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException("Failed to create JMS client configuration!", e);
+        }
+    }
+
+    private static InitialContext getInitialRemoteContext() {
+        InitialContext context = null;
+        try {
+            final Properties env = new Properties();
+            env.put(Context.INITIAL_CONTEXT_FACTORY, "org.jboss.naming.remote.client.InitialContextFactory");
+            env.put(Context.PROVIDER_URL, "http-remoting://"+kieServer.getHost()+":"+kieServer.getKieHttpPort());
+            env.put(Context.SECURITY_PRINCIPAL, "kieserver");
+            env.put(Context.SECURITY_CREDENTIALS, "kieserver1!");
+            context = new InitialContext(env);
+        } catch (NamingException e) {
+            throw new RuntimeException("Failed to create initial context!", e);
+        }
+        return context;
+    }
+
     
     private void abortProcess(KieServicesClient kieServicesClient, ProcessServicesClient processClient, Long processInstanceId) {
         QueryServicesClient queryClient = kieServicesClient.getServicesClient(QueryServicesClient.class);
