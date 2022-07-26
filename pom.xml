@@ -15,7 +15,7 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <kie.version>7.48.0.Final</kie.version>
+    <kie.version>7.67.0.Final</kie.version>
     <junit.version>5.7.0</junit.version>
 
     <!-- maven plugin versions -->
@@ -166,7 +166,7 @@
         <activeByDefault>true</activeByDefault>
       </activation>
       <properties>
-        <org.kie.samples.image>jboss/kie-server-showcase:latest</org.kie.samples.image>
+        <org.kie.samples.image>quay.io/kiegroup/kie-server-showcase:latest</org.kie.samples.image>
         <org.kie.samples.script>start_kie-server.sh</org.kie.samples.script>
         <org.kie.samples.server>kie-server</org.kie.samples.server>
       </properties>
